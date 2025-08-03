@@ -27,126 +27,19 @@ def normalize_windows_path(path):
                 available_mounts.append(drive.upper())
         
         # Windows path formatını Docker path formatına çevir
-        if path.startswith('C:') or path.startswith('c:'):
-            if 'C' in available_mounts:
-                return '/host/c/' + path[3:].replace('\\', '/')
-            else:
-                return None  # C: sürücüsü mevcut değil
-        elif path.startswith('D:') or path.startswith('d:'):
-            if 'D' in available_mounts:
-                return '/host/d/' + path[3:].replace('\\', '/')
-            else:
-                return None  # D: sürücüsü mevcut değil
-        elif path.startswith('E:') or path.startswith('e:'):
-            if 'E' in available_mounts:
-                return '/host/e/' + path[3:].replace('\\', '/')
-            else:
-                return None  # E: sürücüsü mevcut değil
-        elif path.startswith('F:') or path.startswith('f:'):
-            if 'F' in available_mounts:
-                return '/host/f/' + path[3:].replace('\\', '/')
-            else:
-                return None  # F: sürücüsü mevcut değil
-        elif path.startswith('G:') or path.startswith('g:'):
-            if 'G' in available_mounts:
-                return '/host/g/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('H:') or path.startswith('h:'):
-            if 'H' in available_mounts:
-                return '/host/h/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('I:') or path.startswith('i:'):
-            if 'I' in available_mounts:
-                return '/host/i/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('J:') or path.startswith('j:'):
-            if 'J' in available_mounts:
-                return '/host/j/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('K:') or path.startswith('k:'):
-            if 'K' in available_mounts:
-                return '/host/k/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('L:') or path.startswith('l:'):
-            if 'L' in available_mounts:
-                return '/host/l/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('M:') or path.startswith('m:'):
-            if 'M' in available_mounts:
-                return '/host/m/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('N:') or path.startswith('n:'):
-            if 'N' in available_mounts:
-                return '/host/n/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('O:') or path.startswith('o:'):
-            if 'O' in available_mounts:
-                return '/host/o/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('P:') or path.startswith('p:'):
-            if 'P' in available_mounts:
-                return '/host/p/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('Q:') or path.startswith('q:'):
-            if 'Q' in available_mounts:
-                return '/host/q/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('R:') or path.startswith('r:'):
-            if 'R' in available_mounts:
-                return '/host/r/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('S:') or path.startswith('s:'):
-            if 'S' in available_mounts:
-                return '/host/s/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('T:') or path.startswith('t:'):
-            if 'T' in available_mounts:
-                return '/host/t/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('U:') or path.startswith('u:'):
-            if 'U' in available_mounts:
-                return '/host/u/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('V:') or path.startswith('v:'):
-            if 'V' in available_mounts:
-                return '/host/v/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('W:') or path.startswith('w:'):
-            if 'W' in available_mounts:
-                return '/host/w/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('X:') or path.startswith('x:'):
-            if 'X' in available_mounts:
-                return '/host/x/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('Y:') or path.startswith('y:'):
-            if 'Y' in available_mounts:
-                return '/host/y/' + path[3:].replace('\\', '/')
-            else:
-                return None
-        elif path.startswith('Z:') or path.startswith('z:'):
-            if 'Z' in available_mounts:
-                return '/host/z/' + path[3:].replace('\\', '/')
-            else:
-                return None
+        for drive_letter in 'cdefghijklmnopqrstuvwxyz':
+            drive_upper = drive_letter.upper()
+            if path.upper().startswith(f'{drive_upper}:'):
+                if drive_upper in available_mounts:
+                    # Path'i normalize et ve Docker formatına çevir
+                    normalized_path = path[3:].replace('\\', '/').replace('//', '/')
+                    return f'/host/{drive_letter}/{normalized_path}'
+                else:
+                    return None  # Sürücü mevcut değil
+        
+        # Eğer Docker path formatında girilmişse (örn: /host/c/Users/...)
+        if path.startswith('/host/'):
+            return path
     
     elif platform.system() == "Windows":
         # Native Windows ortamında normal path dönüşümü
