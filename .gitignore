@@ -29,10 +29,6 @@ MANIFEST
 
 # PyInstaller
 *.manifest
-# *.spec  # Keep spec file for builds
-
-# PyInstaller > 1.5.4
-*.spec
 
 # Installer logs
 pip-log.txt
