@@ -25,14 +25,6 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         
-    - name: Create icon file (if not exists)
-      run: |
-        if (!(Test-Path "icon.ico")) {
-          Write-Host "Creating placeholder icon..."
-          # Create a simple placeholder icon or download one
-          # For now, we'll skip icon creation
-        }
-        
     - name: Build executable
       run: |
         pyinstaller --clean main.spec
@@ -45,42 +37,12 @@ jobs:
         # Create release directory
         New-Item -ItemType Directory -Path "release" -Force
         
-        # Copy executable and create archive
+        # Copy executable
         Copy-Item "dist\FileSizeAnalyzer.exe" "release\"
         
-        # Create README for release
-        @"
-# File Size Analyzer v$version
-
-## Windows Executable
-
-This is the Windows executable version of File Size Analyzer.
-
-### Features:
-- 📁 Folder and file analysis
-- 📊 Excel, PDF, HTML export
-- 📈 Interactive charts
-- 💾 Size optimization suggestions
-- 🔍 Advanced filtering options
-
-### Installation:
-1. Download and extract the ZIP file
-2. Run `FileSizeAnalyzer.exe`
-3. No installation required - portable application
-
-### System Requirements:
-- Windows 10/11 (64-bit)
-- No additional software required
-
-### Usage:
-- Select a folder to analyze
-- Use filters to customize analysis
-- Export reports in various formats
-- View optimization suggestions
-
-### Support:
-For issues and questions, please visit the GitHub repository.
-"@ | Out-File -FilePath "release\README.txt" -Encoding UTF8
+        # Create simple README
+        $readmeText = "# File Size Analyzer v$version`n`nWindows executable version. Extract and run FileSizeAnalyzer.exe"
+        $readmeText | Out-File -FilePath "release\README.txt" -Encoding UTF8
         
         # Create ZIP archive
         Compress-Archive -Path "release\*" -DestinationPath $archiveName
