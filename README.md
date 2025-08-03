@@ -46,6 +46,40 @@ plotly>=5.15.0
 
 ## 🛠️ Installation
 
+### Option 1: Windows Executable (Recommended)
+Download the latest release from GitHub:
+1. Go to [Releases](https://github.com/yourusername/noob-folder-analyzer/releases)
+2. Download `FileSizeAnalyzer-v1.0.0-Windows.zip`
+3. Extract and run `FileSizeAnalyzer.exe`
+4. No installation required - portable application
+
+### Option 2: Docker (Web Version)
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd noob-folder-analyzer
+   ```
+
+2. **Start with Docker**:
+   ```bash
+   # Smart Docker (Recommended - Auto-detects available drives)
+   start_docker_smart.bat
+   .\start_docker_smart.ps1
+   
+   # Manual Docker
+   start_docker.bat
+   .\start_docker.ps1
+   docker-compose up --build
+   ```
+
+3. **Open in browser**:
+   ```
+   http://localhost:8501
+   ```
+
+### Option 3: Local Installation (Development)
+
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
@@ -59,7 +93,10 @@ plotly>=5.15.0
 
 ## 🎯 Usage
 
-### Desktop Application (Tkinter)
+### Windows Executable (Recommended)
+Simply run `FileSizeAnalyzer.exe` - no installation required!
+
+### Desktop Application (Tkinter - Development)
 
 Run the desktop version with a graphical user interface:
 
@@ -89,11 +126,32 @@ streamlit run streamlit_app.py
 - Export functionality
 - Responsive design
 
+## 🐳 Docker Setup
+
+### Windows Sürücü Erişimi
+Docker container'da Windows sürücülerinize erişmek için:
+
+- **C: sürücüsü**: `/host/c/Users/YourName/Documents`
+- **D: sürücüsü**: `/host/d/YourFolder`
+- **E: sürücüsü**: `/host/e/YourFolder`
+
+### Örnek Kullanım
+```
+Windows Path: C:\Users\YourName\Documents
+Docker Path: /host/c/Users/YourName/Documents
+```
+
+### Sorun Giderme
+- Docker Desktop'ın çalıştığından emin olun
+- Windows sürücülerinizin erişilebilir olduğunu kontrol edin
+- Detaylı bilgi için `DOCKER_README.md` dosyasını inceleyin
+
 ## 📖 How to Use
 
 ### 1. Select a Folder
 - **Desktop**: Click "Select Folder" or drag & drop a folder
 - **Web**: Use the folder input or upload files
+- **Docker**: Use Docker path format (e.g., `/host/c/Users/YourName/Documents`)
 
 ### 2. Apply Filters (Optional)
 - **File Type Filter**: Select specific file categories
