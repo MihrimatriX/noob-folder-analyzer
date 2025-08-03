@@ -13,51 +13,31 @@ import json
 import platform
 
 def normalize_windows_path(path):
-    """Normalize Windows path format for Docker environment"""
-    if not path:
-        return path
-    
-    # Docker container'da Windows drive'larına erişim için path'i dönüştür
-    if platform.system() == "Linux":  # Docker container'da Linux çalışır
-        # Önce mevcut mount'ları kontrol et
+    if not path: return path
+    if platform.system() == "Linux":
         available_mounts = []
         for drive in 'cdefghijklmnopqrstuvwxyz':
             mount_path = f'/host/{drive}'
-            if os.path.exists(mount_path):
-                available_mounts.append(drive.upper())
-        
-        # Windows path formatını Docker path formatına çevir
+            if os.path.exists(mount_path): available_mounts.append(drive.upper())
         for drive_letter in 'cdefghijklmnopqrstuvwxyz':
             drive_upper = drive_letter.upper()
             if path.upper().startswith(f'{drive_upper}:'):
                 if drive_upper in available_mounts:
-                    # Path'i normalize et ve Docker formatına çevir
                     normalized_path = path[3:].replace('\\', '/').replace('//', '/')
                     return f'/host/{drive_letter}/{normalized_path}'
-                else:
-                    return None  # Sürücü mevcut değil
-        
-        # Eğer Docker path formatında girilmişse (örn: /host/c/Users/...)
-        if path.startswith('/host/'):
-            return path
-    
+                else: return None
+        if path.startswith('/host/'): return path
     elif platform.system() == "Windows":
-        # Native Windows ortamında normal path dönüşümü
         if path.endswith('\\') and len(path) == 2:
             normalized = path.rstrip('\\')
-            if len(normalized) == 1:
-                return normalized + ":\\"
+            if len(normalized) == 1: return normalized + ":\\"
             return normalized
         path = path.replace('\\\\', '\\')
-        if len(path) >= 2 and path[1] == ':' and len(path) == 2:
-            path = path + "\\"
-    
+        if len(path) >= 2 and path[1] == ':' and len(path) == 2: path = path + "\\"
     return path.strip()
 
 def get_folder_name(path):
-    """Extract folder name from full path"""
-    if not path:
-        return path
+    if not path: return path
     return os.path.basename(path) if os.path.basename(path) else os.path.dirname(path).split(os.sep)[-1]
 
 st.set_page_config(
@@ -647,161 +627,82 @@ class FileSizeAnalyzerWeb:
         total_size = 0
         try:
             for item in Path(folder_path).rglob('*'):
-                if item.is_file():
-                    total_size += item.stat().st_size
-        except PermissionError:
-            pass
+                if item.is_file(): total_size += item.stat().st_size
+        except PermissionError: pass
         return total_size
     
     def analyze_folder_contents(self, folder_path, file_type_filter=None, size_filter=None, date_filter=None, search_filter=None):
         files_data = []
-        
         try:
             selected_path = Path(folder_path)
-            
-            # Yol doğrulama
             if not selected_path.exists():
-                return [{
-                    'Name': f'Hata: Klasör bulunamadı - {folder_path}',
-                    'Type': 'Error',
-                    'Size (GB)': 0,
-                    'Extension': '❌',
-                    'Full Path': folder_path,
-                    'Category': 'Error'
-                }]
-            
+                return [{'Name': f'Hata: Klasör bulunamadı - {folder_path}', 'Type': 'Error', 'Size (GB)': 0, 'Extension': '❌', 'Full Path': folder_path, 'Category': 'Error'}]
             if not selected_path.is_dir():
-                return [{
-                    'Name': f'Hata: Bu bir klasör değil - {folder_path}',
-                    'Type': 'Error',
-                    'Size (GB)': 0,
-                    'Extension': '❌',
-                    'Full Path': folder_path,
-                    'Category': 'Error'
-                }]
-            
+                return [{'Name': f'Hata: Bu bir klasör değil - {folder_path}', 'Type': 'Error', 'Size (GB)': 0, 'Extension': '❌', 'Full Path': folder_path, 'Category': 'Error'}]
             system_folders = ['$RECYCLE.BIN', 'System Volume Information', 'RECYCLER', 'Thumbs.db']
-            
-            folders = []
-            files = []
-            
+            folders, files = [], []
             try:
                 for item in selected_path.iterdir():
                     if item.is_dir():
                         if item.name not in system_folders:
-                            if search_filter and search_filter.lower() not in item.name.lower():
-                                continue
+                            if search_filter and search_filter.lower() not in item.name.lower(): continue
                             folders.append(item)
                     elif item.is_file():
                         if item.name not in system_folders:
                             if file_type_filter:
                                 file_extension = item.suffix.lower()
-                                if file_extension not in file_type_filter:
-                                    continue
-                            
+                                if file_extension not in file_type_filter: continue
                             if size_filter:
                                 size_bytes = item.stat().st_size
                                 size_gb = size_bytes / (1024 * 1024 * 1024)
                                 min_size, max_size = size_filter
-                                if not (min_size <= size_gb <= max_size):
-                                    continue
-                            
+                                if not (min_size <= size_gb <= max_size): continue
                             if date_filter:
                                 from datetime import datetime
                                 file_creation_time = datetime.fromtimestamp(item.stat().st_ctime)
                                 start_date, end_date = date_filter
-                                if not (start_date <= file_creation_time <= end_date):
-                                    continue
-                            
-                            if search_filter and search_filter.lower() not in item.name.lower():
-                                continue
-                            
+                                if not (start_date <= file_creation_time <= end_date): continue
+                            if search_filter and search_filter.lower() not in item.name.lower(): continue
                             files.append(item)
             except PermissionError:
-                return [{
-                    'Name': f'Hata: Klasöre erişim izni yok - {folder_path}',
-                    'Type': 'Error',
-                    'Size (GB)': 0,
-                    'Extension': '❌',
-                    'Full Path': folder_path,
-                    'Category': 'Error'
-                }]
-            
+                return [{'Name': f'Hata: Klasöre erişim izni yok - {folder_path}', 'Type': 'Error', 'Size (GB)': 0, 'Extension': '❌', 'Full Path': folder_path, 'Category': 'Error'}]
             for folder in folders:
                 folder_size = self.get_folder_size(folder)
                 folder_size_mb = folder_size / (1024 * 1024)
                 folder_size_gb = folder_size_mb / 1024
-                files_data.append({
-                    'Name': folder.name,
-                    'Type': 'Folder',
-                    'Size (GB)': round(folder_size_gb, 2),
-                    'Extension': '📁',
-                    'Full Path': str(folder),
-                    'Category': 'Folder'
-                })
-            
+                files_data.append({'Name': folder.name, 'Type': 'Folder', 'Size (GB)': round(folder_size_gb, 2), 'Extension': '📁', 'Full Path': str(folder), 'Category': 'Folder'})
             for file in files:
                 size_bytes = file.stat().st_size
                 size_mb = size_bytes / (1024 * 1024)
                 size_gb = size_mb / 1024
-                
                 category = self.get_file_category(file.suffix.lower())
-                
-                files_data.append({
-                    'Name': file.name,
-                    'Type': 'File',
-                    'Size (GB)': round(size_gb, 2),
-                    'Extension': file.suffix.lower(),
-                    'Full Path': str(file),
-                    'Category': category
-                })
-            
+                files_data.append({'Name': file.name, 'Type': 'File', 'Size (GB)': round(size_gb, 2), 'Extension': file.suffix.lower(), 'Full Path': str(file), 'Category': category})
             return files_data
-            
         except Exception as e:
-            return [{
-                'Name': f'Error: {str(e)}',
-                'Type': 'Error',
-                'Size (GB)': 0,
-                'Extension': '❌',
-                'Full Path': folder_path,
-                'Category': 'Error'
-            }]
+            return [{'Name': f'Error: {str(e)}', 'Type': 'Error', 'Size (GB)': 0, 'Extension': '❌', 'Full Path': folder_path, 'Category': 'Error'}]
     
     def get_file_category(self, file_extension):
         for category, extensions in self.file_categories.items():
-            if file_extension.lower() in extensions:
-                return category
+            if file_extension.lower() in extensions: return category
         return "Other"
     
     def calculate_compression_savings(self, file_size_gb, file_category):
         savings = {}
-        
         if file_category in self.compression_algorithms:
             for algorithm, efficiency in self.compression_algorithms[file_category].items():
                 original_size = file_size_gb
                 compressed_size = original_size * (1 - efficiency)
                 savings_gb = original_size - compressed_size
                 savings_percentage = efficiency * 100
-                
-                savings[algorithm] = {
-                    'original_size': original_size,
-                    'compressed_size': compressed_size,
-                    'savings_gb': savings_gb,
-                    'savings_percentage': savings_percentage
-                }
-        
+                savings[algorithm] = {'original_size': original_size, 'compressed_size': compressed_size, 'savings_gb': savings_gb, 'savings_percentage': savings_percentage}
         return savings
 
 def main():
     st.markdown('<h1 class="main-header">📁 File Size Analyzer</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Advanced file and folder analysis with intelligent optimization recommendations</p>', unsafe_allow_html=True)
-    
-    # Help section
     with st.expander("❓ How to use?"):
         st.markdown("""
         ### 📋 User Guide
-        
         1. **📂 Folder Selection**: Enter the path of the folder you want to analyze
            - **Docker Environment**: Use Docker path format
              - `C:\\Users\\YourName\\Documents` → `/host/c/Users/YourName/Documents`
@@ -809,17 +710,13 @@ def main():
              - `D:\\Photos` → `/host/d/Photos`
            - **Native Windows**: `C:\\Users\\YourName\\Documents` or `C:/Users/YourName/Documents`
            - **Mac/Linux**: `/Users/YourName/Documents`
-        
         2. **🔍 Filters**: Optionally apply filters
            - File types
            - Size range
            - Date range
            - Search term
-        
         3. **🚀 Analysis**: Click "Analyze Folder" button
-        
         4. **📊 Results**: View analysis results in different tabs
-        
         ### 💡 Tips
         - **Docker Users**: Use `/host/` prefix for Windows drives (e.g., `/host/c/Users/YourName/Documents`)
         - **Native Users**: Use normal Windows paths (e.g., `C:\\Users\\[Username]\\Documents`)
@@ -832,142 +729,86 @@ def main():
         """)
     
     with st.container():
-        st.markdown("""
-        <div class="bg-slate-800/95 backdrop-blur-lg rounded-xl p-4 md:p-6 mb-4 shadow-2xl border border-slate-600/20 max-w-4xl mx-auto w-full">
-            <h3 class="mb-3 text-slate-100 font-semibold text-lg md:text-xl">⚙️ Analysis Controls</h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown("""<div class="bg-slate-800/95 backdrop-blur-lg rounded-xl p-4 md:p-6 mb-4 shadow-2xl border border-slate-600/20 max-w-4xl mx-auto w-full"><h3 class="mb-3 text-slate-100 font-semibold text-lg md:text-xl">⚙️ Analysis Controls</h3></div>""", unsafe_allow_html=True)
         st.subheader("📂 Folder Selection")
-        
-        # Folder selection method
-        selection_method = st.radio(
-            "Folder selection method:",
-            ["📝 Manual path input", "📁 Folder picker"],
-            horizontal=True,
-            help="Choose how you want to enter the folder path"
-        )
+        selection_method = st.radio("Folder selection method:", ["📝 Manual path input", "📁 Folder picker"], horizontal=True, help="Choose how you want to enter the folder path")
         
         if selection_method == "📝 Manual path input":
-            # Use suggested path if available, otherwise use text input
             if hasattr(st.session_state, 'suggested_path') and st.session_state.suggested_path:
-                folder_path = st.text_input(
-                    "Enter folder path:", 
-                    value=st.session_state.suggested_path,
-                    placeholder="C:\\Users\\YourName\\Documents",
-                    help="Enter the full path of the folder to analyze"
-                )
+                folder_path = st.text_input("Enter folder path:", value=st.session_state.suggested_path, placeholder="C:\\Users\\YourName\\Documents", help="Enter the full path of the folder to analyze")
             else:
-                folder_path = st.text_input(
-                    "Enter folder path:", 
-                    placeholder="C:\\Users\\YourName\\Documents",
-                    help="Enter the full path of the folder to analyze"
-                )
-            
-            # Quick folder options
+                folder_path = st.text_input("Enter folder path:", placeholder="C:\\Users\\YourName\\Documents", help="Enter the full path of the folder to analyze")
             st.markdown("**🚀 Quick options:**")
-            
-            # Mevcut sürücüleri kontrol et
             available_drives = []
-            if platform.system() == "Linux":  # Docker environment
+            if platform.system() == "Linux":
                 for drive in 'cdefghijklmnopqrstuvwxyz':
                     mount_path = f'/host/{drive}'
-                    if os.path.exists(mount_path):
-                        available_drives.append(drive.upper())
-            else:  # Native Windows
+                    if os.path.exists(mount_path): available_drives.append(drive.upper())
+            else:
                 import string
                 for letter in string.ascii_uppercase:
                     drive_path = f"{letter}:\\"
-                    if os.path.exists(drive_path):
-                        available_drives.append(letter)
-            
-            # Mevcut sürücüleri göster
+                    if os.path.exists(drive_path): available_drives.append(letter)
             if available_drives:
                 st.info(f"💡 Mevcut sürücüler: {', '.join(available_drives)}")
-                
-                # İlk 3 mevcut sürücüyü buton olarak göster
                 col1, col2, col3 = st.columns(3)
-                
                 for i, drive in enumerate(available_drives[:3]):
                     with [col1, col2, col3][i]:
                         if st.button(f"💾 {drive}:", use_container_width=True):
-                            if platform.system() == "Linux":  # Docker environment
-                                drive_path = f"/host/{drive.lower()}/"
-                            else:  # Native Windows
-                                drive_path = f"{drive}:\\"
-                            
+                            if platform.system() == "Linux": drive_path = f"/host/{drive.lower()}/"
+                            else: drive_path = f"{drive}:\\"
                             st.session_state.suggested_path = drive_path
                             st.session_state.folder_path = drive_path
                             st.success(f"✅ Suggested path: {drive_path}")
                             st.rerun()
             else:
                 st.warning("⚠️ Hiçbir sürücü bulunamadı!")
-                if platform.system() == "Linux":
-                    st.info("💡 Docker: Sürücüler mount edilmemiş olabilir")
-                else:
-                    st.info("💡 Windows: Sürücüler erişilebilir değil")
-            
-            # Show suggested path and clear button
+                if platform.system() == "Linux": st.info("💡 Docker: Sürücüler mount edilmemiş olabilir")
+                else: st.info("💡 Windows: Sürücüler erişilebilir değil")
             if hasattr(st.session_state, 'suggested_path') and st.session_state.suggested_path:
                 col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.info(f"💡 Suggested path: `{st.session_state.suggested_path}`")
+                with col1: st.info(f"💡 Suggested path: `{st.session_state.suggested_path}`")
                 with col2:
                     if st.button("🗑️ Clear", use_container_width=True):
                         del st.session_state.suggested_path
-                        if hasattr(st.session_state, 'folder_path'):
-                            del st.session_state.folder_path
+                        if hasattr(st.session_state, 'folder_path'): del st.session_state.folder_path
                         st.rerun()
             
-            # Debug information (for developer mode)
             with st.expander("🔧 Debug Info"):
                 st.write(f"**Current OS:** {platform.system()}")
                 st.write(f"**Environment:** {'Docker Container' if platform.system() == 'Linux' else 'Native System'}")
                 st.write(f"**Entered path:** `{folder_path}`")
-                
                 if folder_path:
                     normalized_path = normalize_windows_path(folder_path)
                     st.write(f"**Normalized path:** `{normalized_path}`")
-                    
                     if normalized_path is None:
                         st.write("**Path exists:** ❌ Drive not accessible")
                         st.write("**🔍 Path analysis:** Normalized path is None - drive not mounted")
                     else:
                         st.write(f"**Path exists:** {os.path.exists(normalized_path)}")
-                        
                         if os.path.exists(normalized_path):
                             st.write(f"**Is folder:** {os.path.isdir(normalized_path)}")
                             st.write(f"**Is file:** {os.path.isfile(normalized_path)}")
                         else:
-                            # Detailed error analysis
                             st.write("**🔍 Detailed path analysis:**")
                             st.write(f"- Path empty: {not normalized_path}")
                             st.write(f"- Path length: {len(normalized_path) if normalized_path else 0}")
                             if normalized_path and len(normalized_path) >= 2:
                                 st.write(f"- First char: '{normalized_path[0]}'")
                                 st.write(f"- Second char: '{normalized_path[1]}'")
-                                if len(normalized_path) >= 3:
-                                    st.write(f"- Third char: '{normalized_path[2]}'")
-                        
-                        # Docker environment check
+                                if len(normalized_path) >= 3: st.write(f"- Third char: '{normalized_path[2]}'")
                         if platform.system() == "Linux":
                             st.write("**🐳 Docker Environment Check:**")
-                            # Check if Docker host mounts are available
                             docker_mounts = ['/host/c', '/host/d', '/host/e', '/host/f']
                             available_mounts = []
                             for mount in docker_mounts:
-                                if os.path.exists(mount):
-                                    available_mounts.append(mount)
+                                if os.path.exists(mount): available_mounts.append(mount)
                             st.write(f"- Available Docker mounts: {', '.join(available_mounts) if available_mounts else 'None'}")
-                            
-                            # Check specific drive access
                             if normalized_path and normalized_path.startswith('/host/'):
                                 drive_part = normalized_path.split('/')[2] if len(normalized_path.split('/')) > 2 else ''
                                 if drive_part:
                                     st.write(f"- Checking Docker mount: /host/{drive_part}")
                                     st.write(f"- Mount exists: {os.path.exists(f'/host/{drive_part}')}")
-                        
-                        # Windows drive check (native)
                         elif platform.system() == "Windows" and normalized_path and len(normalized_path) >= 2:
                             if normalized_path[1] == ':':
                                 drive_letter = normalized_path[0].upper()
@@ -976,99 +817,65 @@ def main():
                                 st.write(f"- Drive exists (forward slash): {os.path.exists(drive_letter + ':/')}")
                                 backslash_path = drive_letter + ':\\'
                                 st.write(f"- Drive exists (backslash): {os.path.exists(backslash_path)}")
-                                
-                                # List available drives
                                 import string
                                 available_drives = []
                                 for letter in string.ascii_uppercase:
                                     drive_path_forward = f"{letter}:/"
                                     drive_path_backslash = f"{letter}:\\"
-                                    if os.path.exists(drive_path_forward) or os.path.exists(drive_path_backslash):
-                                        available_drives.append(letter)
+                                    if os.path.exists(drive_path_forward) or os.path.exists(drive_path_backslash): available_drives.append(letter)
                                 st.write(f"- Available drives: {', '.join(available_drives)}")
-                
                 st.write(f"**Session state folder_path:** `{st.session_state.get('folder_path', 'None')}`")
                 st.write(f"**Session state suggested_path:** `{st.session_state.get('suggested_path', 'None')}`")
         else:
-            # Temporary solution for folder picker
             st.info("💡 Please use manual path input for folder picker feature")
-            folder_path = st.text_input(
-                "Enter folder path:", 
-                placeholder="C:\\Users\\YourName\\Documents",
-                help="Enter the full path of the folder to analyze"
-            )
-        
+            folder_path = st.text_input("Enter folder path:", placeholder="C:\\Users\\YourName\\Documents", help="Enter the full path of the folder to analyze")
         st.markdown('<h3>🔍 Filters</h3>', unsafe_allow_html=True)
-        
         col1, col2 = st.columns(2)
-        
         with col1:
-            file_type_filter = st.multiselect(
-                "File Types:",
-                list(analyzer.file_categories.keys()),
-                default=[],
-                help="Select file categories to include in analysis"
-            )
-        
+            if 'file_type_filter' not in st.session_state: st.session_state.file_type_filter = []
+            file_type_filter = st.multiselect("File Types:", list(analyzer.file_categories.keys()), default=st.session_state.file_type_filter, help="Select file categories to include in analysis")
+            st.session_state.file_type_filter = file_type_filter
+            if st.button("🗑️ Clear All Filters", help="Clear all selected filters"):
+                st.session_state.file_type_filter = []
+                st.session_state.search_filter = ""
+                st.rerun()
         with col2:
-            search_filter = st.text_input(
-                "Search term:", 
-                placeholder="Enter file or folder name...",
-                help="Search for files/folders by name"
-            )
+            if 'search_filter' not in st.session_state: st.session_state.search_filter = ""
+            search_filter = st.text_input("Search term:", value=st.session_state.search_filter, placeholder="Enter file or folder name...", help="Search for files/folders by name")
+            st.session_state.search_filter = search_filter
             search_filter = search_filter if search_filter.strip() else None
         
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("🚀 Analyze Folder", type="primary", help="Start folder analysis with current filters", use_container_width=True):
-                # Session state'den folder_path'i al veya mevcut değeri kullan
                 current_folder_path = folder_path
-                if hasattr(st.session_state, 'folder_path') and st.session_state.folder_path:
-                    current_folder_path = st.session_state.folder_path
-                
-                # Yolu normalize et ve doğrula
+                if hasattr(st.session_state, 'folder_path') and st.session_state.folder_path: current_folder_path = st.session_state.folder_path
                 current_folder_path = normalize_windows_path(current_folder_path)
-                
-                # Advanced path validation
                 if not current_folder_path:
                     st.error("❌ Please enter a folder path!")
                 elif current_folder_path is None:
-                    # normalize_windows_path None döndürdüyse sürücü mevcut değil
                     st.error("❌ Drive not found or not accessible!")
-                    
-                    # Mevcut sürücüleri göster
                     available_drives = []
-                    if platform.system() == "Linux":  # Docker environment
+                    if platform.system() == "Linux":
                         for drive in 'cdefghijklmnopqrstuvwxyz':
                             mount_path = f'/host/{drive}'
-                            if os.path.exists(mount_path):
-                                available_drives.append(drive.upper())
-                    else:  # Native Windows
+                            if os.path.exists(mount_path): available_drives.append(drive.upper())
+                    else:
                         import string
                         for letter in string.ascii_uppercase:
                             drive_path = f"{letter}:\\"
-                            if os.path.exists(drive_path):
-                                available_drives.append(letter)
-                    
-                    if available_drives:
-                        st.info(f"💡 Mevcut sürücüler: {', '.join(available_drives)}")
-                    else:
-                        st.info("💡 Hiçbir sürücü bulunamadı!")
-                    
-                    if platform.system() == "Linux":
-                        st.info("💡 Docker: Sürücüler mount edilmemiş olabilir")
-                    else:
-                        st.info("💡 Windows: Sürücüler erişilebilir değil")
+                            if os.path.exists(drive_path): available_drives.append(letter)
+                    if available_drives: st.info(f"💡 Mevcut sürücüler: {', '.join(available_drives)}")
+                    else: st.info("💡 Hiçbir sürücü bulunamadı!")
+                    if platform.system() == "Linux": st.info("💡 Docker: Sürücüler mount edilmemiş olabilir")
+                    else: st.info("💡 Windows: Sürücüler erişilebilir değil")
                 elif not os.path.exists(current_folder_path):
                     st.error(f"❌ Folder not found: {current_folder_path}")
-                    
-                    # Special message for drive access
                     if current_folder_path and len(current_folder_path) >= 2 and current_folder_path[1] == ':':
                         drive_letter = current_folder_path[0].upper()
                         st.error(f"❌ {drive_letter}: drive not found or not accessible!")
                         st.info("💡 This drive may not exist or not be connected")
                         st.info("💡 It could be a USB drive, CD/DVD drive or network drive")
-                    
                     st.info("💡 Tip: Make sure to enter the full path (e.g., C:\\Users\\YourName\\Documents)")
                     st.info("💡 On Windows, make sure to write the drive letter and folder name correctly")
                 elif not os.path.isdir(current_folder_path):
@@ -1078,22 +885,21 @@ def main():
                     try:
                         with st.spinner("📊 Analyzing folder contents..."):
                             active_extensions = []
-                            for category in file_type_filter:
-                                active_extensions.extend(analyzer.file_categories[category])
-                            
-                            files_data = analyzer.analyze_folder_contents(
-                                current_folder_path,
-                                active_extensions if active_extensions else None,
-                                None,
-                                None,
-                                search_filter
-                            )
-                            
+                            for category in file_type_filter: active_extensions.extend(analyzer.file_categories[category])
+                            file_type_filter_to_use = active_extensions if active_extensions else None
+                            files_data = analyzer.analyze_folder_contents(current_folder_path, file_type_filter_to_use, None, None, search_filter)
                             st.session_state.files_data = files_data
                             st.session_state.folder_path = current_folder_path
                             st.session_state.analysis_complete = True
-                        
                         st.success("✅ Analysis completed!")
+                        if st.checkbox("🔧 Show debug info"):
+                            st.write("**Debug Information:**")
+                            st.write(f"- File type filter: {file_type_filter}")
+                            st.write(f"- Active extensions: {active_extensions}")
+                            st.write(f"- Total items found: {len(files_data)}")
+                            st.write(f"- Files: {len([item for item in files_data if item['Type'] == 'File'])}")
+                            st.write(f"- Folders: {len([item for item in files_data if item['Type'] == 'Folder'])}")
+                            st.write(f"- Errors: {len([item for item in files_data if item['Type'] == 'Error'])}")
                     except PermissionError:
                         st.error("❌ You don't have permission to access this folder!")
                         st.info("💡 Try running as administrator or select a different folder")
@@ -1102,207 +908,123 @@ def main():
                         st.info("💡 Please try a different folder or restart the application")
     
     if hasattr(st.session_state, 'analysis_complete') and st.session_state.analysis_complete:
-        # Session state'den güvenli şekilde veri al
         files_data = st.session_state.get('files_data', [])
         folder_path = st.session_state.get('folder_path', 'Unknown')
-        
-        # Gerekli veriler var mı kontrol et
         if not files_data:
             st.warning("⚠️ Analiz verisi bulunamadı!")
             st.info("💡 Lütfen tekrar analiz yapın")
             return
-        
         st.subheader("📊 Analysis Summary")
-        
         total_items = len(files_data)
         files_count = len([item for item in files_data if item['Type'] == 'File'])
         folders_count = len([item for item in files_data if item['Type'] == 'Folder'])
         error_count = len([item for item in files_data if item['Type'] == 'Error'])
         total_size_gb = sum(item['Size (GB)'] for item in files_data if item['Type'] in ['File', 'Folder'])
-        
         col1, col2, col3, col4, col5 = st.columns(5)
+        with col1: st.metric("📁 Total", total_items, help="Total number of items")
+        with col2: st.metric("📄 Files", files_count, help="Number of files")
+        with col3: st.metric("📂 Folders", folders_count, help="Number of folders")
+        with col4: st.metric("❌ Errors", error_count, help="Number of errors")
+        with col5: st.metric("💾 Size", f"{total_size_gb:.2f} GB", help="Total size in GB")
+        st.markdown(f"""<div class="folder-info max-w-4xl mx-auto w-full"><strong>📁 Folder:</strong> {get_folder_name(folder_path)}<br><strong>📅 Date:</strong> {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</div>""", unsafe_allow_html=True)
         
-        with col1:
-            st.metric("📁 Total", total_items, help="Total number of items")
-        with col2:
-            st.metric("📄 Files", files_count, help="Number of files")
-        with col3:
-            st.metric("📂 Folders", folders_count, help="Number of folders")
-        with col4:
-            st.metric("❌ Errors", error_count, help="Number of errors")
-        with col5:
-            st.metric("💾 Size", f"{total_size_gb:.2f} GB", help="Total size in GB")
-        
-        st.markdown(f"""
-        <div class="folder-info max-w-4xl mx-auto w-full">
-            <strong>📁 Folder:</strong> {get_folder_name(folder_path)}<br>
-            <strong>📅 Date:</strong> {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        tab1, tab2, tab3 = st.tabs([
-            "📋 Data", 
-            "📈 Charts", 
-            "📄 Export"
-        ])
-        
+        tab1, tab2, tab3 = st.tabs(["📋 Data", "📈 Charts", "📄 Export"])
         with tab1:
             st.subheader("📋 File Analysis Data")
-            
             df = pd.DataFrame(files_data)
-            
-            # DataFrame boş mu kontrol et
             if df.empty:
                 st.warning("⚠️ Hiçbir dosya veya klasör bulunamadı!")
                 st.info("💡 Bu klasör boş olabilir veya erişim izniniz olmayabilir")
                 return
-            
-            # Gerekli sütunlar var mı kontrol et
             required_columns = ['Name', 'Type', 'Size (GB)', 'Extension', 'Category']
             missing_columns = [col for col in required_columns if col not in df.columns]
-            
             if missing_columns:
                 st.error(f"❌ Eksik sütunlar: {', '.join(missing_columns)}")
                 st.info("💡 Analiz verilerinde sorun var")
                 return
-            
             col1, col2 = st.columns(2)
-            with col1:
-                type_filter = st.selectbox("Filter by Type:", ["All", "File", "Folder", "Error"], help="Filter by item type")
+            with col1: type_filter = st.selectbox("Filter by Type:", ["All", "File", "Folder", "Error"], help="Filter by item type")
             with col2:
-                # Category sütunu var mı kontrol et
                 if 'Category' in df.columns:
                     categories = list(set(df['Category'].unique()))
                     category_filter = st.selectbox("Filter by Category:", ["All"] + categories, help="Filter by file category")
                 else:
                     category_filter = "All"
                     st.info("ℹ️ Category filter not available")
-            
             filtered_df = df.copy()
-            if type_filter != "All":
-                filtered_df = filtered_df[filtered_df['Type'] == type_filter]
-            if category_filter != "All" and 'Category' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['Category'] == category_filter]
-            
-            # Filtrelenmiş DataFrame boş mu kontrol et
+            if type_filter != "All": filtered_df = filtered_df[filtered_df['Type'] == type_filter]
+            if category_filter != "All" and 'Category' in filtered_df.columns: filtered_df = filtered_df[filtered_df['Category'] == category_filter]
             if filtered_df.empty:
                 st.warning("⚠️ Seçilen filtrelere uygun dosya/klasör bulunamadı!")
                 st.info("💡 Farklı filtreler deneyin")
                 return
-            
-            st.dataframe(
-                filtered_df[['Name', 'Type', 'Size (GB)', 'Extension']],
-                use_container_width=True,
-                hide_index=True,
-                height=400
-            )
+            st.dataframe(filtered_df[['Name', 'Type', 'Size (GB)', 'Extension']], use_container_width=True, hide_index=True, height=400)
         
         with tab2:
             st.subheader("📈 Analysis Charts")
-            
-            # DataFrame boş mu kontrol et
             if df.empty:
                 st.warning("⚠️ Grafik gösterilemiyor - veri yok!")
                 return
-            
-            # Gerekli sütunlar var mı kontrol et
             required_columns = ['Name', 'Type', 'Size (GB)', 'Extension']
             missing_columns = [col for col in required_columns if col not in df.columns]
-            
             if missing_columns:
                 st.error(f"❌ Grafik gösterilemiyor - eksik sütunlar: {', '.join(missing_columns)}")
                 return
-            
             col1, col2 = st.columns(2)
-            
             with col1:
-                # Sadece dosyalar için grafik
                 files_df = df[df['Type'] == 'File']
                 if not files_df.empty and 'Extension' in files_df.columns:
                     file_types = files_df['Extension'].value_counts()
                     if len(file_types) > 0:
-                        fig1 = px.pie(
-                            values=file_types.values,
-                            names=file_types.index,
-                            title="📄 File Types"
-                        )
+                        fig1 = px.pie(values=file_types.values, names=file_types.index, title="📄 File Types")
                         fig1.update_layout(height=300)
                         st.plotly_chart(fig1, use_container_width=True)
-                    else:
-                        st.info("ℹ️ Dosya türü grafiği gösterilemiyor")
-                else:
-                    st.info("ℹ️ Dosya bulunamadı")
-            
+                    else: st.info("ℹ️ Dosya türü grafiği gösterilemiyor")
+                else: st.info("ℹ️ Dosya bulunamadı")
             with col2:
-                # En büyük öğeler için grafik
                 if 'Size (GB)' in df.columns:
                     top_items = df.nlargest(10, 'Size (GB)')
                     if not top_items.empty:
-                        fig2 = px.bar(
-                            top_items,
-                            x='Name',
-                            y='Size (GB)',
-                            color='Type',
-                            title="📊 Top 10 Largest Items"
-                        )
+                        fig2 = px.bar(top_items, x='Name', y='Size (GB)', title="📊 Top 10 Largest Items")
                         fig2.update_xaxes(tickangle=45)
                         fig2.update_layout(height=300)
                         st.plotly_chart(fig2, use_container_width=True)
-                    else:
-                        st.info("ℹ️ Boyut grafiği gösterilemiyor")
-                else:
-                    st.info("ℹ️ Boyut bilgisi bulunamadı")
+                    else: st.info("ℹ️ Boyut grafiği gösterilemiyor")
+                else: st.info("ℹ️ Boyut bilgisi bulunamadı")
         
         with tab3:
             st.subheader("📄 Export Options")
-            
-            # Export için veri kontrolü
             if df.empty:
                 st.warning("⚠️ Export yapılamıyor - veri yok!")
                 return
-            
             required_columns = ['Name', 'Type', 'Size (GB)', 'Extension', 'Category']
             missing_columns = [col for col in required_columns if col not in df.columns]
-            
             if missing_columns:
                 st.error(f"❌ Export yapılamıyor - eksik sütunlar: {', '.join(missing_columns)}")
                 return
-            
             col1, col2, col3 = st.columns(3)
             
             with col1:
                 if st.button("📊 Excel", help="Export data to Excel format"):
                     if not df.empty:
                         df_export = pd.DataFrame(files_data)
-                        
                         output = BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-                            
                             df_export.to_excel(writer, sheet_name='Detailed Analysis', index=False)
-                            
                             workbook = writer.book
                             worksheet = writer.sheets['Detailed Analysis']
-                            
                             title_font = Font(name='Segoe UI', size=16, bold=True, color='FFFFFF')
                             header_font = Font(name='Segoe UI', size=11, bold=True, color='FFFFFF')
                             normal_font = Font(name='Segoe UI', size=10)
-                            
                             title_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
                             header_fill = PatternFill(start_color='70AD47', end_color='70AD47', fill_type='solid')
                             folder_fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
                             file_fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
                             error_fill = PatternFill(start_color='FFE6E6', end_color='FFE6E6', fill_type='solid')
-                            
                             center_alignment = Alignment(horizontal='center', vertical='center')
                             left_alignment = Alignment(horizontal='left', vertical='center')
-                            
-                            thin_border = Border(
-                                left=Side(style='thin'),
-                                right=Side(style='thin'),
-                                top=Side(style='thin'),
-                                bottom=Side(style='thin')
-                            )
+                            thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
                             
                             worksheet.insert_rows(1, 3)
                             worksheet.merge_cells('A1:D1')
@@ -1313,13 +1035,11 @@ def main():
                             title_cell.fill = title_fill
                             title_cell.alignment = center_alignment
                             title_cell.border = thin_border
-                            
                             worksheet.merge_cells('A2:D2')
                             subtitle_cell = worksheet['A2']
                             subtitle_cell.value = f"📊 Analysis Date: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
                             subtitle_cell.font = Font(name='Segoe UI', size=9, color='666666')
                             subtitle_cell.alignment = center_alignment
-                            
                             headers = ['Name', 'Type', 'Size (GB)', 'Extension']
                             for col, header in enumerate(headers, 1):
                                 cell = worksheet.cell(row=4, column=col)
@@ -1329,12 +1049,9 @@ def main():
                                 cell.alignment = center_alignment
                                 cell.border = thin_border
                             
-                            # Tüm sayfa için biçimlendirme
                             for row_num in range(1, len(df_export) + 5):
                                 for col_num in range(1, 5):
                                     cell = worksheet.cell(row=row_num, column=col_num)
-                                    
-                                    # Başlık satırları (1-3)
                                     if row_num <= 3:
                                         if row_num == 1:
                                             cell.font = title_font
@@ -1346,75 +1063,44 @@ def main():
                                         elif row_num == 3:
                                             cell.font = Font(name='Segoe UI', size=10, color='666666')
                                             cell.alignment = center_alignment
-                                    # Başlık satırı (4)
                                     elif row_num == 4:
                                         cell.font = header_font
                                         cell.fill = header_fill
                                         cell.alignment = center_alignment
-                                    # Veri satırları (5+)
                                     else:
                                         cell.font = normal_font
                                         cell.alignment = left_alignment
-                                        
                                         row_type = worksheet.cell(row=row_num, column=2).value
-                                        if row_type == 'Folder':
-                                            cell.fill = folder_fill
-                                        elif row_type == 'File':
-                                            cell.fill = file_fill
-                                        elif row_type == 'Error':
-                                            cell.fill = error_fill
-                                    
-                                    # Tüm hücrelere border ekle
+                                        if row_type == 'Folder': cell.fill = folder_fill
+                                        elif row_type == 'File': cell.fill = file_fill
+                                        elif row_type == 'Error': cell.fill = error_fill
                                     cell.border = thin_border
                             
                             for column in worksheet.columns:
                                 max_length = 0
                                 column_letter = None
                                 for cell in column:
-                                    if cell.coordinate in worksheet.merged_cells:
-                                        continue
+                                    if cell.coordinate in worksheet.merged_cells: continue
                                     try:
                                         if len(str(cell.value)) > max_length:
                                             max_length = len(str(cell.value))
                                             column_letter = cell.column_letter
-                                    except:
-                                        pass
+                                    except: pass
                                 if column_letter:
                                     adjusted_width = min(max_length + 2, 50)
                                     worksheet.column_dimensions[column_letter].width = adjusted_width
-                            
-                            # Özet sayfası
                             summary_data = {
-                                'Metric': [
-                                    'Total Items',
-                                    'File Count',
-                                    'Folder Count',
-                                    'Error Count',
-                                    'Total Size (GB)',
-                                    'Largest File',
-                                    'Smallest File',
-                                    'Average File Size (GB)',
-                                    'Analyzed Folders'
-                                ],
+                                'Metric': ['Total Items', 'File Count', 'Folder Count', 'Error Count', 'Total Size (GB)', 'Largest File', 'Smallest File', 'Average File Size (GB)', 'Analyzed Folders'],
                                 'Value': [
-                                    total_items,
-                                    files_count,
-                                    folders_count,
-                                    error_count,
-                                    round(total_size_gb, 2),
-                                    max([item for item in files_data if item['Type'] == 'File'], 
-                                        key=lambda x: x['Size (GB)'])['Name'] if files_count > 0 else 'None',
-                                    min([item for item in files_data if item['Type'] == 'File'], 
-                                        key=lambda x: x['Size (GB)'])['Name'] if files_count > 0 else 'None',
-                                    round(total_size_gb / files_count, 2) if files_count > 0 else 0,
-                                    len(df_export['Name'].unique())
+                                    total_items, files_count, folders_count, error_count, round(total_size_gb, 2),
+                                    max([item for item in files_data if item['Type'] == 'File'], key=lambda x: x['Size (GB)'])['Name'] if files_count > 0 else 'None',
+                                    min([item for item in files_data if item['Type'] == 'File'], key=lambda x: x['Size (GB)'])['Name'] if files_count > 0 else 'None',
+                                    round(total_size_gb / files_count, 2) if files_count > 0 else 0, len(df_export['Name'].unique())
                                 ]
                             }
                             
                             summary_df = pd.DataFrame(summary_data)
                             summary_df.to_excel(writer, sheet_name='General Summary', index=False)
-                            
-                            # Özet sayfasını formatla
                             summary_worksheet = writer.sheets['General Summary']
                             summary_worksheet.merge_cells('A1:B1')
                             title_cell2 = summary_worksheet['A1']
@@ -1423,8 +1109,6 @@ def main():
                             title_cell2.fill = title_fill
                             title_cell2.alignment = center_alignment
                             title_cell2.border = thin_border
-                            
-                            # Özet başlıkları
                             headers2 = ['Metric', 'Value']
                             for col, header in enumerate(headers2, 1):
                                 cell = summary_worksheet.cell(row=3, column=col)
@@ -1433,8 +1117,6 @@ def main():
                                 cell.fill = header_fill
                                 cell.alignment = center_alignment
                                 cell.border = thin_border
-                            
-                            # Özet verileri
                             for row_idx in range(4, len(summary_df) + 4):
                                 for col_idx in range(1, 3):
                                     cell = summary_worksheet.cell(row=row_idx, column=col_idx)
@@ -1442,11 +1124,9 @@ def main():
                                     cell.alignment = left_alignment
                                     cell.border = thin_border
                                     cell.fill = PatternFill(start_color='DDEBF7', end_color='DDEBF7', fill_type='solid')
-                            
                             file_types = df_export[df_export['Type'] == 'File']['Extension'].value_counts().reset_index()
                             file_types.columns = ['File Extension', 'Count']
                             file_types.to_excel(writer, sheet_name='File Types', index=False)
-                            
                             types_worksheet = writer.sheets['File Types']
                             types_worksheet.merge_cells('A1:B1')
                             title_cell3 = types_worksheet['A1']
@@ -1455,7 +1135,6 @@ def main():
                             title_cell3.fill = title_fill
                             title_cell3.alignment = center_alignment
                             title_cell3.border = thin_border
-                            
                             headers3 = ['File Extension', 'Count']
                             for col, header in enumerate(headers3, 1):
                                 cell = types_worksheet.cell(row=3, column=col)
@@ -1464,7 +1143,6 @@ def main():
                                 cell.fill = header_fill
                                 cell.alignment = center_alignment
                                 cell.border = thin_border
-                            
                             for row_idx in range(4, len(file_types) + 4):
                                 for col_idx in range(1, 3):
                                     cell = types_worksheet.cell(row=row_idx, column=col_idx)
@@ -1472,16 +1150,11 @@ def main():
                                     cell.alignment = left_alignment
                                     cell.border = thin_border
                                     cell.fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
-                            
-                            folder_summary = df_export.groupby('Name').agg({
-                                'Type': 'count',
-                                'Size (GB)': 'sum'
-                            }).reset_index()
+                            folder_summary = df_export.groupby('Name').agg({'Type': 'count', 'Size (GB)': 'sum'}).reset_index()
                             folder_summary.columns = ['Name', 'Item Count', 'Total Size (GB)']
                             folder_summary['Total Size (GB)'] = folder_summary['Total Size (GB)'].round(2)
                             folder_summary = folder_summary.sort_values('Total Size (GB)', ascending=False)
                             folder_summary.to_excel(writer, sheet_name='Folder Summary', index=False)
-                            
                             folder_worksheet = writer.sheets['Folder Summary']
                             folder_worksheet.merge_cells('A1:C1')
                             title_cell4 = folder_worksheet['A1']
@@ -1490,7 +1163,6 @@ def main():
                             title_cell4.fill = title_fill
                             title_cell4.alignment = center_alignment
                             title_cell4.border = thin_border
-                            
                             headers4 = ['Name', 'Item Count', 'Total Size (GB)']
                             for col, header in enumerate(headers4, 1):
                                 cell = folder_worksheet.cell(row=3, column=col)
@@ -1499,7 +1171,6 @@ def main():
                                 cell.fill = header_fill
                                 cell.alignment = center_alignment
                                 cell.border = thin_border
-                            
                             for row_idx in range(4, len(folder_summary) + 4):
                                 for col_idx in range(1, 4):
                                     cell = folder_worksheet.cell(row=row_idx, column=col_idx)
@@ -1507,65 +1178,35 @@ def main():
                                     cell.alignment = left_alignment
                                     cell.border = thin_border
                                     cell.fill = PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid')
-                            
-                            if 'Sheet' in workbook.sheetnames:
-                                workbook.remove(workbook['Sheet'])
+                            if 'Sheet' in workbook.sheetnames: workbook.remove(workbook['Sheet'])
                         
                         output.seek(0)
-                        
-                        st.download_button(
-                            label="📥 Download Excel File",
-                            data=output.getvalue(),
-                            file_name=f"detailed_file_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-            
+                        st.download_button(label="📥 Download Excel File", data=output.getvalue(), file_name=f"detailed_file_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             with col2:
                 if st.button("📄 CSV", help="Export data to CSV format"):
                     if len(files_data) > 0:
                         df_export = pd.DataFrame(files_data)
                         csv = df_export.to_csv(index=False)
-                        
-                        st.download_button(
-                            label="📥 Download CSV File",
-                            data=csv,
-                            file_name=f"file_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-            
+                        st.download_button(label="📥 Download CSV File", data=csv, file_name=f"file_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", mime="text/csv")
             with col3:
                 if st.button("📊 Package", help="Export data package with charts"):
                     if len(files_data) > 0:
                         zip_buffer = BytesIO()
-                        
                         with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
                             json_data = json.dumps(files_data, indent=2, default=str)
                             zip_file.writestr('analysis_data.json', json_data)
-                            
-                            summary_text = f"""
-File Analysis Summary
+                            summary_text = f"""File Analysis Summary
 ====================
 Folder: {folder_path}
 Date: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
-
 Total Items: {total_items}
 Files: {files_count}
 Folders: {folders_count}
 Errors: {error_count}
-Total Size: {total_size_gb:.2f} GB
-                            """
+Total Size: {total_size_gb:.2f} GB"""
                             zip_file.writestr('summary.txt', summary_text)
-                        
                         zip_buffer.seek(0)
-                        
-                        st.download_button(
-                            label="📥 Download Data Package",
-                            data=zip_buffer.getvalue(),
-                            file_name=f"file_analysis_package_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                            mime="application/zip"
-                        )
+                        st.download_button(label="📥 Download Data Package", data=zip_buffer.getvalue(), file_name=f"file_analysis_package_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip", mime="application/zip")
  
 analyzer = FileSizeAnalyzerWeb()
-
-if __name__ == "__main__":
-    main() 
+if __name__ == "__main__": main() 
