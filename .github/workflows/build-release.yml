@@ -13,11 +13,18 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
       
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+        
+    - name: Debug workflow
+      run: |
+        echo "Workflow file version check:"
+        Get-Content .github/workflows/build-release.yml | Select-String "actions/upload-artifact"
         
     - name: Install dependencies
       run: |
@@ -50,7 +57,7 @@ jobs:
     - name: Upload release assets
       uses: actions/upload-artifact@v4
       with:
-        name: windows-executable
+        name: windows-executable-${{ github.run_id }}
         path: |
           FileSizeAnalyzer-v*-Windows.zip
           dist/FileSizeAnalyzer.exe
