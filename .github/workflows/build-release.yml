@@ -32,9 +32,31 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         
+        # Verify PyInstaller installation
+        pyinstaller --version
+        
     - name: Build executable
       run: |
-        pyinstaller --clean main.spec
+        # Debug: List files to see what's available
+        Get-ChildItem -Name
+        echo "Current directory: $(Get-Location)"
+        echo "Checking if main.spec exists:"
+        Test-Path "main.spec"
+        echo "Checking if version_info.txt exists:"
+        Test-Path "version_info.txt"
+        
+        # Show spec file content for debugging
+        echo "main.spec content:"
+        Get-Content "main.spec" | Select-Object -First 10
+        
+        # Build executable with verbose output
+        pyinstaller --clean --log-level DEBUG main.spec
+        
+        # If spec file fails, try building without spec
+        if ($LASTEXITCODE -ne 0) {
+          echo "Spec file build failed, trying direct build..."
+          pyinstaller --clean --onefile --windowed --name FileSizeAnalyzer main.py
+        }
         
     - name: Create release archive
       run: |
