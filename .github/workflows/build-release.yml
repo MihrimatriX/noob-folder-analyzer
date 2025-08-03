@@ -41,7 +41,7 @@ jobs:
         Copy-Item "dist\FileSizeAnalyzer.exe" "release\"
         
         # Create simple README
-        $readmeText = "# File Size Analyzer v$version`n`nWindows executable version. Extract and run FileSizeAnalyzer.exe"
+        $readmeText = "# File Size Analyzer v$version`n`n##Windows executable version. Extract and run FileSizeAnalyzer.exe"
         $readmeText | Out-File -FilePath "release\README.txt" -Encoding UTF8
         
         # Create ZIP archive
