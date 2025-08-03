@@ -46,7 +46,14 @@ plotly>=5.15.0
 
 ## 🛠️ Installation
 
-### Option 1: Docker (Recommended)
+### Option 1: Windows Executable (Recommended)
+Download the latest release from GitHub:
+1. Go to [Releases](https://github.com/yourusername/noob-folder-analyzer/releases)
+2. Download `FileSizeAnalyzer-v1.0.0-Windows.zip`
+3. Extract and run `FileSizeAnalyzer.exe`
+4. No installation required - portable application
+
+### Option 2: Docker (Web Version)
 
 1. **Clone the repository**:
    ```bash
@@ -71,7 +78,7 @@ plotly>=5.15.0
    http://localhost:8501
    ```
 
-### Option 2: Local Installation
+### Option 3: Local Installation (Development)
 
 1. **Clone the repository**:
    ```bash
@@ -86,7 +93,10 @@ plotly>=5.15.0
 
 ## 🎯 Usage
 
-### Desktop Application (Tkinter)
+### Windows Executable (Recommended)
+Simply run `FileSizeAnalyzer.exe` - no installation required!
+
+### Desktop Application (Tkinter - Development)
 
 Run the desktop version with a graphical user interface:
 
