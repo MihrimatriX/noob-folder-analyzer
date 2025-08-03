@@ -107,7 +107,7 @@ class FileSizeAnalyzer:
         title_label.grid(row=0, column=0, pady=(10, 3), sticky="ew")
         desc_label = tk.Label(
             self.root,
-            text="Analyze all files and folders - Generate detailed size report",
+            text="Analyze files and folders - Generate detailed size report",
             font=("Segoe UI", 10),
             bg=self.colors['bg'],
             fg=self.colors['text_secondary']
@@ -186,11 +186,11 @@ class FileSizeAnalyzer:
             insertbackground=self.colors['fg']
         )
         self.custom_filter_entry.grid(row=1, column=0, sticky="ew", pady=(0, 4))
-        self.custom_filter_entry.insert(0, ".pdf,.mp4,.jpg")
+        self.custom_filter_entry.insert(0, "")
         self.custom_filter_entry.bind('<KeyRelease>', lambda e: self._update_status_message())
         clear_filter_btn = tk.Button(
             custom_frame,
-            text="🗑️ Clear All",
+            text="🗑️ Clear All Filters",
             command=self.clear_filters,
             font=("Segoe UI", 8),
             bg=self.colors['error'],
@@ -617,12 +617,18 @@ class FileSizeAnalyzer:
         self.max_size_gb = 1000.0
         
     def select_folder(self):
-        folder_path = filedialog.askdirectory(title="Select folder to analyze")
+        # Sadece klasör seçimi yapılacak
+        folder_path = filedialog.askdirectory(
+            title="Select folder to analyze",
+            initialdir=os.path.expanduser("~")
+        )
         
         if folder_path:
             self.selected_folder = folder_path
+            display_text = f"Selected Folder: {folder_path}"
+            
             self.folder_label.config(
-                text=f"Selected: {folder_path}",
+                text=display_text,
                 fg=self.colors['success']
             )
             self.export_button.config(state='normal')
@@ -636,8 +642,9 @@ class FileSizeAnalyzer:
         dropped_path = event.data.strip('{}')
         if os.path.isdir(dropped_path):
             self.selected_folder = dropped_path
+            display_text = f"Selected Folder: {dropped_path}"
             self.folder_label.config(
-                text=f"Selected: {dropped_path}",
+                text=display_text,
                 fg=self.colors['success']
             )
             self.export_button.config(state='normal')
@@ -676,7 +683,7 @@ class FileSizeAnalyzer:
                 fg=self.colors['text_secondary']
             )
         self.custom_filter_entry.delete(0, tk.END)
-        self.custom_filter_entry.insert(0, ".pdf,.mp4,.jpg")
+        self.custom_filter_entry.insert(0, "")
         self.size_filter_var.set(False)
         self.size_filter_enabled = False
         self.min_size_entry.delete(0, tk.END)
@@ -716,6 +723,7 @@ class FileSizeAnalyzer:
             if ext not in unique_extensions:
                 unique_extensions.append(ext)
         
+        # Eğer hiç filtre seçilmemişse boş liste döndür (tüm dosyaları göster)
         return unique_extensions
     
     def toggle_size_filter(self):
@@ -866,8 +874,6 @@ class FileSizeAnalyzer:
         
         try:
             selected_path = Path(folder_path)
-            folders = []
-            files = []
             system_folders = ['$RECYCLE.BIN', 'System Volume Information', 'RECYCLER', 'Thumbs.db']
             active_filters = self.get_active_filters()
             size_filter_enabled = self.size_filter_enabled
@@ -876,65 +882,85 @@ class FileSizeAnalyzer:
             start_date, end_date = self.get_date_filter_range()
             search_filter_enabled = self.search_enabled
             
+            # Sadece klasör analizi yapılacak
+            if not selected_path.is_dir():
+                return [{
+                    'Name': 'Error: Not a folder',
+                    'Type': 'Error',
+                    'Size (GB)': 0,
+                    'Extension': '❌',
+                    'Full Path': str(selected_path)
+                }]
+            
+            # Seçilen klasörün doğrudan altındaki öğeleri analiz et
             for item in selected_path.iterdir():
-                if item.is_dir():
-                    if item.name not in system_folders:
-                        folder_passed_search_filter = True
-                        if search_filter_enabled:
-                            folder_passed_search_filter = self.matches_search(item.name)
-                        
-                        if folder_passed_search_filter:
-                            folders.append(item)
-                elif item.is_file():
-                    if item.name not in system_folders:
-                        file_passed_type_filter = True
-                        if active_filters:
-                            file_extension = item.suffix.lower()
-                            file_passed_type_filter = file_extension in active_filters
-                        
-                        file_passed_size_filter = True
-                        if size_filter_enabled:
-                            size_bytes = item.stat().st_size
-                            size_gb = size_bytes / (1024 * 1024 * 1024)
-                            file_passed_size_filter = min_size_gb <= size_gb <= max_size_gb
-                        
-                        file_passed_date_filter = True
-                        if date_filter_enabled:
-                            from datetime import datetime
-                            file_creation_time = datetime.fromtimestamp(item.stat().st_ctime)
-                            file_passed_date_filter = start_date <= file_creation_time <= end_date
-                        
-                        file_passed_search_filter = True
-                        if search_filter_enabled:
-                            file_passed_search_filter = self.matches_search(item.name)
-                        
-                        if file_passed_type_filter and file_passed_size_filter and file_passed_date_filter and file_passed_search_filter:
-                            files.append(item)
-            
-            for folder in folders:
-                folder_size = self.get_folder_size(folder)
-                folder_size_mb = folder_size / (1024 * 1024)
-                folder_size_gb = folder_size_mb / 1024
-                files_data.append({
-                    'Name': folder.name,
-                    'Type': 'Folder',
-                    'Size (GB)': round(folder_size_gb, 2),
-                    'Extension': '📁',
-                    'Full Path': str(folder)
-                })
-            
-            for file in files:
-                size_bytes = file.stat().st_size
-                size_mb = size_bytes / (1024 * 1024)
-                size_gb = size_mb / 1024
+                # Sistem klasörlerini atla
+                if item.name in system_folders:
+                    continue
                 
-                files_data.append({
-                    'Name': file.name,
-                    'Type': 'File',
-                    'Size (GB)': round(size_gb, 2),
-                    'Extension': file.suffix.lower(),
-                    'Full Path': str(file)
-                })
+                if item.is_dir():
+                    # Alt klasörün boyutunu hesapla
+                    folder_size = self.get_folder_size(item)
+                    folder_size_mb = folder_size / (1024 * 1024)
+                    folder_size_gb = folder_size_mb / 1024
+                    
+                    # Arama filtresini kontrol et
+                    folder_passed_search_filter = True
+                    if search_filter_enabled:
+                        folder_passed_search_filter = self.matches_search(item.name)
+                    
+                    if folder_passed_search_filter:
+                        files_data.append({
+                            'Name': item.name,
+                            'Type': 'Folder',
+                            'Size (GB)': round(folder_size_gb, 2),
+                            'Extension': '📁',
+                            'Full Path': str(item)
+                        })
+                
+                elif item.is_file():
+                    # Dosya filtrelerini kontrol et
+                    file_passed_type_filter = True
+                    if active_filters:
+                        file_extension = item.suffix.lower()
+                        file_passed_type_filter = file_extension in active_filters
+                    
+                    file_passed_size_filter = True
+                    if size_filter_enabled:
+                        size_bytes = item.stat().st_size
+                        size_gb = size_bytes / (1024 * 1024 * 1024)
+                        file_passed_size_filter = min_size_gb <= size_gb <= max_size_gb
+                    
+                    file_passed_date_filter = True
+                    if date_filter_enabled:
+                        from datetime import datetime
+                        file_creation_time = datetime.fromtimestamp(item.stat().st_ctime)
+                        file_passed_date_filter = start_date <= file_creation_time <= end_date
+                    
+                    file_passed_search_filter = True
+                    if search_filter_enabled:
+                        file_passed_search_filter = self.matches_search(item.name)
+                    
+                    # Tüm filtreleri geçerse dosyayı ekle
+                    if file_passed_type_filter and file_passed_size_filter and file_passed_date_filter and file_passed_search_filter:
+                        size_bytes = item.stat().st_size
+                        size_mb = size_bytes / (1024 * 1024)
+                        size_gb = size_mb / 1024
+                        
+                        files_data.append({
+                            'Name': item.name,
+                            'Type': 'File',
+                            'Size (GB)': round(size_gb, 2),
+                            'Extension': item.suffix.lower(),
+                            'Full Path': str(item)
+                        })
+                    
+                    # Debug için: Filtre geçmeyen dosyaları da göster
+                    else:
+                        print(f"File filtered out: {item.name} - Type: {file_passed_type_filter}, Size: {file_passed_size_filter}, Date: {file_passed_date_filter}, Search: {file_passed_search_filter}")
+                        print(f"Active filters: {active_filters}")
+                        print(f"File extension: {item.suffix.lower()}")
+            
             return files_data
             
         except Exception as e:
@@ -949,7 +975,7 @@ class FileSizeAnalyzer:
     def get_file_sizes(self):
         try:
             self.progress.start()
-            self.status_label.config(text="Analyzing folder contents...")
+            self.status_label.config(text="Analyzing folder contents and subfolders...")
             self.root.update()
             all_data = self.analyze_folder_contents(self.selected_folder)
             total_size_gb = sum(item['Size (GB)'] for item in all_data if item['Type'] in ['File', 'Folder'])
@@ -969,7 +995,7 @@ class FileSizeAnalyzer:
             self.files_data, total_size = self.get_file_sizes()
             
             if not self.files_data:
-                messagebox.showinfo("Info", "No files or folders found in selected directory!")
+                messagebox.showinfo("Info", "No files or folders found in selected location!")
                 return
             
             df = pd.DataFrame(self.files_data)
