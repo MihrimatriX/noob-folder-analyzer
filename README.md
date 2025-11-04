@@ -279,18 +279,3 @@ docker run -p 8501:8501 file-size-analyzer
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For issues, questions, or feature requests:
-- Create an issue on GitHub
-- Check the troubleshooting section
-- Review the documentation
-
----
-
-**Made with ❤️ for efficient file management and storage optimization** 
