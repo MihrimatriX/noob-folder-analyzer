@@ -1,0 +1,144 @@
+name: Build and Release Windows Executable
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Debug workflow
+      run: |
+        echo "Workflow file version check:"
+        Get-Content .github/workflows/build-release.yml | Select-String "actions/upload-artifact"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+        # Verify PyInstaller installation
+        pyinstaller --version
+        
+    - name: Build executable
+      run: |
+        # Debug: List files to see what's available
+        Get-ChildItem -Name
+        echo "Current directory: $(Get-Location)"
+        
+        # Check for nested directory structure
+        if (Test-Path "noob-folder-analyzer") {
+          echo "Found nested directory, changing to it..."
+          Set-Location "noob-folder-analyzer"
+          Get-ChildItem -Name
+          echo "New current directory: $(Get-Location)"
+        }
+        
+        echo "Checking if main.spec exists:"
+        Test-Path "main.spec"
+        echo "Checking if version_info.txt exists:"
+        Test-Path "version_info.txt"
+        echo "Checking if main.py exists:"
+        Test-Path "main.py"
+        
+        # Show spec file content for debugging
+        if (Test-Path "main.spec") {
+          echo "main.spec content:"
+          Get-Content "main.spec" | Select-Object -First 10
+        } else {
+          echo "main.spec not found in current directory"
+        }
+        
+        # Build executable with verbose output
+        if (Test-Path "main.spec") {
+          pyinstaller --clean --log-level DEBUG main.spec
+        } else {
+          echo "Spec file not found, building directly..."
+          pyinstaller --clean --onefile --windowed --name FileSizeAnalyzer main.py
+        }
+        
+    - name: Create release archive
+      run: |
+        $version = $env:GITHUB_REF_NAME -replace 'v', ''
+        $archiveName = "FileSizeAnalyzer-v$version-Windows.zip"
+        
+        # Debug: Check where we are and what files exist
+        echo "Current directory: $(Get-Location)"
+        echo "Checking for dist directory:"
+        Test-Path "dist"
+        if (Test-Path "dist") {
+          Get-ChildItem "dist" -Name
+        }
+        
+        # Check for nested directory structure
+        if (Test-Path "noob-folder-analyzer") {
+          echo "Found nested directory, checking dist there..."
+          if (Test-Path "noob-folder-analyzer\dist") {
+            Get-ChildItem "noob-folder-analyzer\dist" -Name
+          }
+        }
+        
+        # Create release directory
+        New-Item -ItemType Directory -Path "release" -Force
+        
+        # Copy executable (try both locations)
+        if (Test-Path "dist\FileSizeAnalyzer.exe") {
+          Copy-Item "dist\FileSizeAnalyzer.exe" "release\"
+          echo "Copied from current directory dist"
+        } elseif (Test-Path "noob-folder-analyzer\dist\FileSizeAnalyzer.exe") {
+          Copy-Item "noob-folder-analyzer\dist\FileSizeAnalyzer.exe" "release\"
+          echo "Copied from nested directory dist"
+        } else {
+          echo "ERROR: FileSizeAnalyzer.exe not found in any dist directory"
+          Get-ChildItem -Recurse -Name "*.exe"
+          exit 1
+        }
+        
+        # Create simple README
+        $readmeText = "# File Size Analyzer v$version`n`n##Windows executable version. Extract and run FileSizeAnalyzer.exe"
+        $readmeText | Out-File -FilePath "release\README.txt" -Encoding UTF8
+        
+        # Create ZIP archive
+        Compress-Archive -Path "release\*" -DestinationPath $archiveName
+        
+    - name: Upload release assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-executable-${{ github.run_id }}
+        path: |
+          FileSizeAnalyzer-v*-Windows.zip
+          dist/FileSizeAnalyzer.exe
+          noob-folder-analyzer/dist/FileSizeAnalyzer.exe
+        
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "Release ${{ github.ref_name }}" \
+          --notes "Windows executable for File Size Analyzer ${{ github.ref_name }}" \
+          --draft=false \
+          --prerelease=false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Release Assets
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        gh release upload ${{ github.ref_name }} FileSizeAnalyzer-v*-Windows.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
